@@ -25,6 +25,7 @@ public class SessionService {
     private final SessionRepository sessionRepository;
     private final SessionEquipmentRepository sessionEquipmentRepository;
     private final EquipmentRepository equipmentRepository;
+    private final NotificationService notificationService;
 
     @Transactional
     public SessionDTO create(SessionDTO dto) {
@@ -60,6 +61,8 @@ public class SessionService {
         Session session = sessionRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("场次不存在"));
 
+        Integer oldStatus = session.getStatus();
+
         if (!session.getSessionNo().equals(dto.getSessionNo())) {
             sessionRepository.findBySessionNo(dto.getSessionNo())
                     .ifPresent(s -> {
@@ -86,6 +89,11 @@ public class SessionService {
         } else {
             // 未提交器材清单时，也要校验已有绑定与新主年龄段一致，保证刷新后配比与已绑器材不冲突
             validateEquipmentsMatchMainGroup(saved, getEquipmentIdsBySession(id));
+        }
+
+        // 先做停用，再做推送：场次状态变为停用后，给当班馆务推送站内通知
+        if (!Integer.valueOf(0).equals(oldStatus) && Integer.valueOf(0).equals(saved.getStatus())) {
+            notificationService.notifySessionDisabled(saved);
         }
 
         log.info("更新场次: {}", saved.getSessionNo());

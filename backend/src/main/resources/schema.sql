@@ -69,6 +69,17 @@ CREATE TABLE IF NOT EXISTS change_log_elderly (
     age_group VARCHAR(20) DEFAULT 'ELDERLY'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS notification (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(100) NOT NULL,
+    content VARCHAR(500) NOT NULL,
+    session_id BIGINT,
+    recipient_role VARCHAR(50) NOT NULL,
+    read_flag TINYINT(1) NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL,
+    read_at DATETIME
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 INSERT INTO equipment (equipment_no, name, cold_resistance_spec, age_group, status, created_at) VALUES
 ('EQ-001', '儿童防寒座椅', '-40°C至-10°C', 'CHILD', 1, NOW()),
 ('EQ-002', '成人防寒座椅', '-60°C至-20°C', 'ADULT', 1, NOW()),

@@ -34,6 +34,7 @@
       <el-container>
         <el-header class="header">
           <h2>{{ pageTitle }}</h2>
+          <NotificationCenter />
         </el-header>
         <el-main class="main-content">
           <EquipmentList v-if="activeMenu === 'equipment'" />
@@ -53,6 +54,7 @@ import EquipmentList from './components/EquipmentList.vue'
 import SessionList from './components/SessionList.vue'
 import ChangeLogList from './components/ChangeLogList.vue'
 import AgeGroupSummary from './components/AgeGroupSummary.vue'
+import NotificationCenter from './components/NotificationCenter.vue'
 
 const icons = { List, Calendar, Document, DataBoard }
 const activeMenu = ref('equipment')
@@ -101,6 +103,7 @@ const pageTitle = computed(() => {
   padding: 0 20px;
   display: flex;
   align-items: center;
+  justify-content: space-between;
 }
 
 .header h2 {
