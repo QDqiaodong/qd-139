@@ -19,6 +19,13 @@
           <el-tag type="warning" size="small">老年 {{ row.elderlyRatio }}%</el-tag>
         </template>
       </el-table-column>
+      <el-table-column label="主年龄段">
+        <template #default="{ row }">
+          <el-tag :type="getAgeGroupTagType(getRowMainAgeGroup(row))" size="small">
+            {{ getAgeGroupName(getRowMainAgeGroup(row)) }}
+          </el-tag>
+        </template>
+      </el-table-column>
       <el-table-column prop="status" label="状态">
         <template #default="{ row }">
           <el-tag :type="row.status === 1 ? 'success' : 'danger'">
@@ -59,6 +66,9 @@
             <el-input-number v-model="formData.adultRatio" :min="0" :max="100" label="成人" />
             <el-input-number v-model="formData.elderlyRatio" :min="0" :max="100" label="老年" />
           </div>
+          <div class="ratio-sum" :class="{ 'ratio-sum-error': ratioSum !== 100 }">
+            当前合计：{{ ratioSum }}%，三项之和必须等于100%才能保存
+          </div>
         </el-form-item>
         <el-form-item label="状态">
           <el-switch v-model="formData.status" :active-value="1" :inactive-value="0" />
@@ -71,10 +81,23 @@
     </el-dialog>
 
     <el-dialog title="绑定器材" v-model="showBindForm" width="600px">
+      <el-alert
+        v-if="currentSession"
+        :title="`本场次主年龄段：${getAgeGroupName(currentMainAgeGroup)}（儿童 ${currentSession.childRatio}% / 成人 ${currentSession.adultRatio}% / 老年 ${currentSession.elderlyRatio}%），仅可绑定适配【${getAgeGroupName(currentMainAgeGroup)}】的器材`"
+        type="info"
+        :closable="false"
+        class="bind-tip"
+      />
       <el-form :model="bindForm" label-width="100px">
         <el-form-item label="可选器材">
           <el-select v-model="bindForm.equipmentIds" multiple filterable style="width: 100%">
-            <el-option v-for="item in allEquipment" :key="item.id" :label="item.name" :value="item.id" />
+            <el-option
+              v-for="item in allEquipment"
+              :key="item.id"
+              :label="`${item.name}（适配${getAgeGroupName(item.ageGroup)}）`"
+              :value="item.id"
+              :disabled="item.ageGroup !== currentMainAgeGroup"
+            />
           </el-select>
         </el-form-item>
       </el-form>
@@ -87,7 +110,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { Plus } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { getSessionList, createSession, updateSession, deleteSession as apiDeleteSession, bindEquipments } from '../api/session'
@@ -101,6 +124,7 @@ const showBindForm = ref(false)
 const isEdit = ref(false)
 const formRef = ref(null)
 const currentSessionId = ref(null)
+const currentSession = ref(null)
 
 const formData = ref({
   id: null,
@@ -125,6 +149,31 @@ const rules = {
   endTime: [{ required: true, message: '请选择结束时间', trigger: 'change' }]
 }
 
+// 儿童、成人、老年三项人群配比之和，必须等于100才能保存
+const ratioSum = computed(() => {
+  const child = formData.value.childRatio || 0
+  const adult = formData.value.adultRatio || 0
+  const elderly = formData.value.elderlyRatio || 0
+  return child + adult + elderly
+})
+
+// 主年龄段：占比最高的一类；并列时按儿童、成人、老年顺序取前者（与后端口径一致）
+const resolveMainAgeGroup = (session) => {
+  const child = session.childRatio || 0
+  const adult = session.adultRatio || 0
+  const elderly = session.elderlyRatio || 0
+  if (child >= adult && child >= elderly) return 'CHILD'
+  if (adult >= elderly) return 'ADULT'
+  return 'ELDERLY'
+}
+
+const getRowMainAgeGroup = (row) => row.mainAgeGroup || resolveMainAgeGroup(row)
+
+const currentMainAgeGroup = computed(() => {
+  if (!currentSession.value) return null
+  return getRowMainAgeGroup(currentSession.value)
+})
+
 const loadData = async () => {
   const res = await getSessionList()
   if (res.success) {
@@ -147,7 +196,8 @@ const editSession = (row) => {
 
 const bindEquipment = async (row) => {
   currentSessionId.value = row.id
-  bindForm.value = { equipmentIds: [...row.equipmentIds] }
+  currentSession.value = row
+  bindForm.value = { equipmentIds: [...(row.equipmentIds || [])] }
   await loadEquipment()
   showBindForm.value = true
 }
@@ -172,17 +222,20 @@ const deleteSession = async (row) => {
 const submitForm = async () => {
   if (!formRef.value) return
   await formRef.value.validate(async (valid) => {
-    if (valid) {
-      const res = isEdit.value
-        ? await updateSession(formData.value.id, formData.value)
-        : await createSession(formData.value)
-      if (res.success) {
-        ElMessage.success(isEdit.value ? '更新成功' : '创建成功')
-        showAddForm.value = false
-        loadData()
-      } else {
-        ElMessage.error(res.message)
-      }
+    if (!valid) return
+    if (ratioSum.value !== 100) {
+      ElMessage.error(`儿童、成人、老年人群配比之和必须等于100%（当前为${ratioSum.value}%），不能保存`)
+      return
+    }
+    const res = isEdit.value
+      ? await updateSession(formData.value.id, formData.value)
+      : await createSession(formData.value)
+    if (res.success) {
+      ElMessage.success(isEdit.value ? '更新成功' : '创建成功')
+      showAddForm.value = false
+      loadData()
+    } else {
+      ElMessage.error(res.message)
     }
   })
 }
@@ -195,7 +248,19 @@ const submitBind = async () => {
     loadData()
   } else {
     ElMessage.error(res.message)
+    // 绑定失败：恢复为服务端已绑名单，页面上的已绑名单保持不变
+    bindForm.value.equipmentIds = [...(currentSession.value?.equipmentIds || [])]
   }
+}
+
+const getAgeGroupName = (ageGroup) => {
+  const map = { CHILD: '儿童', ADULT: '成人', ELDERLY: '老年' }
+  return map[ageGroup] || ageGroup
+}
+
+const getAgeGroupTagType = (ageGroup) => {
+  const map = { CHILD: 'info', ADULT: 'success', ELDERLY: 'warning' }
+  return map[ageGroup] || 'info'
 }
 
 onMounted(loadData)
@@ -211,5 +276,19 @@ onMounted(loadData)
 .ratio-row {
   display: flex;
   gap: 20px;
+}
+
+.ratio-sum {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #67c23a;
+}
+
+.ratio-sum-error {
+  color: #f56c6c;
+}
+
+.bind-tip {
+  margin-bottom: 16px;
 }
 </style>
