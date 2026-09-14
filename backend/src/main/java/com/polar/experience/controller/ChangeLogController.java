@@ -6,7 +6,9 @@ import com.polar.experience.enums.AgeGroup;
 import com.polar.experience.service.ChangeLogService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -28,11 +30,18 @@ public class ChangeLogController {
             response.put("success", true);
             response.put("data", result);
             response.put("message", "变更成功");
+            return ResponseEntity.ok(response);
+        } catch (ObjectOptimisticLockingFailureException e) {
+            // 同一器材被两人同时变更：先提交者成功，后提交者版本过期，按冲突处理、不写流水
+            response.put("success", false);
+            response.put("conflict", true);
+            response.put("message", "操作冲突：该器材的年龄段刚刚已被其他人变更，请刷新后重试，本次变更未生效");
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
         } catch (RuntimeException e) {
             response.put("success", false);
             response.put("message", e.getMessage());
+            return ResponseEntity.ok(response);
         }
-        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/session/{sessionId}")

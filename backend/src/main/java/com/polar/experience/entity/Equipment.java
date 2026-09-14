@@ -32,6 +32,13 @@ public class Equipment {
     @Column(name = "age_group", nullable = false, length = 20)
     private AgeGroup ageGroup;
 
+    /**
+     * 乐观锁版本号：两人同时变更同一器材年龄段时，后提交者版本号过期，按冲突处理。
+     */
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version = 0L;
+
     @Column(name = "status", nullable = false)
     private Integer status = 1;
 

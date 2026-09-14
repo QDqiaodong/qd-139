@@ -64,7 +64,8 @@ public class EquipmentService {
             equipment.setStatus(dto.getStatus());
         }
 
-        Equipment saved = equipmentRepository.save(equipment);
+        // 并发编辑同一器材时，flush 立即触发 @Version 乐观锁冲突，由控制器转成“操作冲突”提示
+        Equipment saved = equipmentRepository.saveAndFlush(equipment);
         updateRedisCache(saved);
         log.info("更新器材: {}", saved.getEquipmentNo());
         return convertToDTO(saved);

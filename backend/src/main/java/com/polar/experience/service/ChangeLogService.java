@@ -26,8 +26,13 @@ public class ChangeLogService {
 
     @Transactional
     public ChangeLog changeAgeGroup(ChangeLogDTO dto) {
+        // 先按普通读校验场次存在与状态；已停用的场次直接当作失效，不允许再变更年龄段
         Session session = sessionRepository.findById(dto.getSessionId())
                 .orElseThrow(() -> new RuntimeException("场次不存在"));
+        if (Integer.valueOf(0).equals(session.getStatus())) {
+            throw new RuntimeException("场次【" + session.getSessionNo()
+                    + "】已停用，按失效处理，不能再变更器材年龄段");
+        }
 
         Equipment equipment = equipmentRepository.findById(dto.getEquipmentId())
                 .orElseThrow(() -> new RuntimeException("器材不存在"));
@@ -39,8 +44,21 @@ public class ChangeLogService {
             throw new RuntimeException("新年龄段与原年龄段相同");
         }
 
+        // 落库前对场次加行锁并再次校验停用状态：
+        // 与“馆务停用场次”互斥——若停用先提交，这里读到停用即整体回滚；
+        // 若本变更先拿锁，停用操作须等本次提交后才能生效。两种情况下都不会给已停用场次写流水。
+        Session lockedSession = sessionRepository.findByIdForUpdate(dto.getSessionId())
+                .orElseThrow(() -> new RuntimeException("场次不存在"));
+        if (Integer.valueOf(0).equals(lockedSession.getStatus())) {
+            throw new RuntimeException("场次【" + lockedSession.getSessionNo()
+                    + "】已停用，按失效处理，不能再变更器材年龄段");
+        }
+
         equipment.setAgeGroup(newAgeGroup);
-        equipmentRepository.save(equipment);
+        // 立即刷库：器材带 @Version 乐观锁，两人同时改同一器材时，
+        // 后提交者版本号过期，这里抛出 ObjectOptimisticLockingFailureException，
+        // 事务回滚、不写流水，按操作冲突处理。
+        equipmentRepository.saveAndFlush(equipment);
 
         String key = REDIS_KEY_PREFIX + equipment.getEquipmentNo();
         redisTemplate.delete(key);

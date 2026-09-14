@@ -58,7 +58,9 @@ public class SessionService {
 
     @Transactional
     public SessionDTO update(Long id, SessionDTO dto) {
-        Session session = sessionRepository.findById(id)
+        // 行级加锁读取：与“年龄段变更台账”里对场次的加锁校验互斥，
+        // 保证停用场次与变更器材年龄段不会同时生效
+        Session session = sessionRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new RuntimeException("场次不存在"));
 
         Integer oldStatus = session.getStatus();

@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS equipment (
     cold_resistance_spec VARCHAR(100) NOT NULL,
     age_group VARCHAR(20) NOT NULL,
     status INT NOT NULL DEFAULT 1,
+    version BIGINT NOT NULL DEFAULT 0,
     created_at DATETIME NOT NULL,
     updated_at DATETIME
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

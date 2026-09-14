@@ -5,7 +5,9 @@ import com.polar.experience.enums.AgeGroup;
 import com.polar.experience.service.EquipmentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -42,11 +44,17 @@ public class EquipmentController {
             response.put("success", true);
             response.put("data", result);
             response.put("message", "更新成功");
+            return ResponseEntity.ok(response);
+        } catch (ObjectOptimisticLockingFailureException e) {
+            response.put("success", false);
+            response.put("conflict", true);
+            response.put("message", "操作冲突：该器材刚刚已被其他人修改，请刷新后重试");
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
         } catch (RuntimeException e) {
             response.put("success", false);
             response.put("message", e.getMessage());
+            return ResponseEntity.ok(response);
         }
-        return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/{id}")
