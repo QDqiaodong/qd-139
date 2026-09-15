@@ -86,14 +86,32 @@ public class EquipmentService {
         return convertToDTO(equipment);
     }
 
+    /**
+     * 器材管理列表：返回库里全部器材（含停用），供页面对账
+     */
     public List<EquipmentDTO> getAll() {
-        return equipmentRepository.findByStatus(1).stream()
+        return equipmentRepository.findAll().stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
 
     public List<EquipmentDTO> getByAgeGroup(AgeGroup ageGroup) {
-        return equipmentRepository.findByAgeGroupAndStatus(ageGroup, 1).stream()
+        return equipmentRepository.findByAgeGroup(ageGroup).stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    public List<EquipmentDTO> getByAgeGroupAndStatus(AgeGroup ageGroup, Integer status) {
+        return equipmentRepository.findByAgeGroupAndStatus(ageGroup, status).stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 场次绑定、送检等业务选择器使用：只挑在用器材
+     */
+    public List<EquipmentDTO> getByStatus(Integer status) {
+        return equipmentRepository.findByStatus(status).stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }

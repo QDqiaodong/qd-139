@@ -7,16 +7,43 @@
             <el-tag :type="getAgeGroupTagType(summary.ageGroup)" size="large">
               {{ summary.ageGroupName }}
             </el-tag>
-            <span class="count">共 {{ summary.totalCount }} 件器材</span>
+            <div class="counts">
+              <span>共 {{ summary.totalCount }} 件</span>
+              <span class="count-active">在用 {{ summary.activeCount }} 件</span>
+              <el-button
+                link
+                type="danger"
+                :disabled="summary.inactiveCount === 0"
+                @click="openInactiveDialog(summary)"
+              >
+                停用 {{ summary.inactiveCount }} 件
+              </el-button>
+            </div>
           </div>
         </template>
-        <el-table :data="summary.equipments" border stripe size="small">
+        <el-table :data="summary.activeEquipments" border stripe size="small">
           <el-table-column prop="equipmentNo" label="编号" />
           <el-table-column prop="name" label="名称" />
           <el-table-column prop="coldResistanceSpec" label="耐寒规格" />
+          <template #empty>暂无在用器材</template>
         </el-table>
       </el-card>
     </div>
+
+    <el-dialog
+      v-model="showInactiveDialog"
+      :title="`${currentAgeGroupName}停用器材名单（共 ${currentInactiveList.length} 件）`"
+      width="480px"
+    >
+      <el-table :data="currentInactiveList" border stripe size="small">
+        <el-table-column prop="equipmentNo" label="编号" width="160" />
+        <el-table-column prop="name" label="名称" />
+        <template #empty>无停用器材</template>
+      </el-table>
+      <template #footer>
+        <el-button type="primary" @click="showInactiveDialog = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -25,12 +52,21 @@ import { ref, onMounted } from 'vue'
 import { getSummaryByAllAgeGroups } from '../api/summary'
 
 const summaryList = ref([])
+const showInactiveDialog = ref(false)
+const currentAgeGroupName = ref('')
+const currentInactiveList = ref([])
 
 const loadData = async () => {
   const res = await getSummaryByAllAgeGroups()
   if (res.success) {
     summaryList.value = res.data
   }
+}
+
+const openInactiveDialog = (summary) => {
+  currentAgeGroupName.value = summary.ageGroupName
+  currentInactiveList.value = summary.inactiveEquipments || []
+  showInactiveDialog.value = true
 }
 
 const getAgeGroupTagType = (ageGroup) => {
@@ -58,8 +94,15 @@ onMounted(loadData)
   align-items: center;
 }
 
-.count {
+.counts {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   font-size: 14px;
   color: #666;
+}
+
+.count-active {
+  color: #67c23a;
 }
 </style>

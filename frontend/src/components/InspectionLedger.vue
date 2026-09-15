@@ -200,7 +200,8 @@ const loadOrders = async () => {
 }
 
 const loadEquipment = async () => {
-  const res = await getEquipmentList({})
+  // 送检选择器只列出在用器材；停用器材不能新送检
+  const res = await getEquipmentList({ status: 1 })
   if (res.success) {
     equipmentList.value = res.data
   }

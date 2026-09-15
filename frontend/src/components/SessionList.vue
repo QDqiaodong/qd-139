@@ -182,7 +182,8 @@ const loadData = async () => {
 }
 
 const loadEquipment = async () => {
-  const res = await getEquipmentList()
+  // 场次绑定只能选在用器材；停用器材仅在器材管理页和汇总卡片中可见
+  const res = await getEquipmentList({ status: 1 })
   if (res.success) {
     allEquipment.value = res.data
   }

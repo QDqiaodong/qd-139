@@ -1,11 +1,17 @@
 <template>
   <div class="equipment-list">
     <div class="filter-bar">
-      <el-select v-model="filterAgeGroup" placeholder="按年龄段筛选" clearable class="filter-select">
-        <el-option label="儿童" value="CHILD" />
-        <el-option label="成人" value="ADULT" />
-        <el-option label="老年" value="ELDERLY" />
-      </el-select>
+      <div class="filter-group">
+        <el-select v-model="filterAgeGroup" placeholder="按年龄段筛选" clearable class="filter-select">
+          <el-option label="儿童" value="CHILD" />
+          <el-option label="成人" value="ADULT" />
+          <el-option label="老年" value="ELDERLY" />
+        </el-select>
+        <el-select v-model="filterStatus" placeholder="按状态筛选" clearable class="filter-select">
+          <el-option label="在用" :value="1" />
+          <el-option label="停用" :value="0" />
+        </el-select>
+      </div>
       <el-button type="primary" @click="showAddForm = true">
         <el-icon><component :is="icons.Plus" /></el-icon>
         新增器材
@@ -81,6 +87,7 @@ import { getEquipmentList, createEquipment, updateEquipment, deleteEquipment as 
 const icons = { Plus }
 const equipmentList = ref([])
 const filterAgeGroup = ref(null)
+const filterStatus = ref(null)
 const showAddForm = ref(false)
 const isEdit = ref(false)
 const formRef = ref(null)
@@ -102,7 +109,10 @@ const rules = {
 }
 
 const loadData = async () => {
-  const params = filterAgeGroup.value ? { ageGroup: filterAgeGroup.value } : {}
+  // 不带 status 默认返回全部（含停用），保证停用器材在列表里可见、可对账
+  const params = {}
+  if (filterAgeGroup.value) params.ageGroup = filterAgeGroup.value
+  if (filterStatus.value !== null && filterStatus.value !== '') params.status = filterStatus.value
   const res = await getEquipmentList(params)
   if (res.success) {
     equipmentList.value = res.data
@@ -162,6 +172,7 @@ const getAgeGroupTagType = (ageGroup) => {
 
 onMounted(loadData)
 watch(filterAgeGroup, loadData)
+watch(filterStatus, loadData)
 </script>
 
 <style scoped>
@@ -174,5 +185,10 @@ watch(filterAgeGroup, loadData)
 
 .filter-select {
   width: 200px;
+}
+
+.filter-group {
+  display: flex;
+  gap: 12px;
 }
 </style>

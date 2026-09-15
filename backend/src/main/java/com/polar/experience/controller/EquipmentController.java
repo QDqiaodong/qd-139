@@ -86,13 +86,19 @@ public class EquipmentController {
     }
 
     @GetMapping
-    public ResponseEntity<Map<String, Object>> getAll(@RequestParam(required = false) AgeGroup ageGroup) {
+    public ResponseEntity<Map<String, Object>> getAll(@RequestParam(required = false) AgeGroup ageGroup,
+                                                      @RequestParam(required = false) Integer status) {
         Map<String, Object> response = new HashMap<>();
         try {
             List<EquipmentDTO> result;
-            if (ageGroup != null) {
+            if (ageGroup != null && status != null) {
+                result = equipmentService.getByAgeGroupAndStatus(ageGroup, status);
+            } else if (ageGroup != null) {
                 result = equipmentService.getByAgeGroup(ageGroup);
+            } else if (status != null) {
+                result = equipmentService.getByStatus(status);
             } else {
+                // 不带筛选：返回全部（含停用），供器材管理页与汇总卡片对账
                 result = equipmentService.getAll();
             }
             response.put("success", true);

@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -31,15 +32,26 @@ public class AgeGroupSummaryService {
     }
 
     public AgeGroupSummaryDTO getSummaryByAgeGroup(AgeGroup ageGroup) {
-        List<Equipment> equipments = equipmentRepository.findByAgeGroupAndStatus(ageGroup, 1);
+        // 按年龄段取全部器材（含停用），再按状态拆分，停用件数不能从汇总里蒸发
+        List<Equipment> allEquipments = equipmentRepository.findByAgeGroup(ageGroup);
+
+        Map<Boolean, List<Equipment>> partitioned = allEquipments.stream()
+                .collect(Collectors.partitioningBy(e -> Integer.valueOf(1).equals(e.getStatus())));
+        List<Equipment> activeEquipments = partitioned.get(true);
+        List<Equipment> inactiveEquipments = partitioned.get(false);
 
         AgeGroupSummaryDTO summary = new AgeGroupSummaryDTO();
         summary.setAgeGroup(ageGroup);
         summary.setAgeGroupName(getAgeGroupName(ageGroup));
-        summary.setEquipments(equipments.stream()
+        summary.setActiveEquipments(activeEquipments.stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList()));
-        summary.setTotalCount(equipments.size());
+        summary.setInactiveEquipments(inactiveEquipments.stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList()));
+        summary.setActiveCount(activeEquipments.size());
+        summary.setInactiveCount(inactiveEquipments.size());
+        summary.setTotalCount(allEquipments.size());
 
         return summary;
     }
