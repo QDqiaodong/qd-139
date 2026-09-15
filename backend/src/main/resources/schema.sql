@@ -81,6 +81,23 @@ CREATE TABLE IF NOT EXISTS notification (
     read_at DATETIME
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 耐寒送检台账：馆务挑选耐寒规格有偏差的器材送检，状态只走 待接单PENDING / 已修复REPAIRED
+CREATE TABLE IF NOT EXISTS inspection_order (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    order_no VARCHAR(50) NOT NULL UNIQUE,
+    equipment_id BIGINT NOT NULL,
+    equipment_no VARCHAR(50) NOT NULL,
+    equipment_name VARCHAR(100) NOT NULL,
+    cold_resistance_spec VARCHAR(100),
+    inspection_note VARCHAR(500) NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+    operator VARCHAR(50),
+    created_at DATETIME NOT NULL,
+    repaired_at DATETIME,
+    INDEX idx_inspection_status (status),
+    INDEX idx_inspection_equipment (equipment_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 INSERT INTO equipment (equipment_no, name, cold_resistance_spec, age_group, status, created_at) VALUES
 ('EQ-001', '儿童防寒座椅', '-40°C至-10°C', 'CHILD', 1, NOW()),
 ('EQ-002', '成人防寒座椅', '-60°C至-20°C', 'ADULT', 1, NOW()),
