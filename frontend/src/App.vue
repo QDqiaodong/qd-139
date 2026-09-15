@@ -25,6 +25,10 @@
             <el-icon><component :is="icons.Calendar" /></el-icon>
             <span>体验场次管理</span>
           </el-menu-item>
+          <el-menu-item index="feedback">
+            <el-icon><component :is="icons.EditPen" /></el-icon>
+            <span>体验感受登记</span>
+          </el-menu-item>
           <el-menu-item index="changeLog">
             <el-icon><component :is="icons.Document" /></el-icon>
             <span>年龄段变更台账</span>
@@ -44,6 +48,7 @@
           <EquipmentList v-if="activeMenu === 'equipment'" />
           <InspectionLedger v-else-if="activeMenu === 'inspection'" />
           <SessionList v-else-if="activeMenu === 'session'" />
+          <FeedbackRegister v-else-if="activeMenu === 'feedback'" />
           <ChangeLogList v-else-if="activeMenu === 'changeLog'" />
           <AgeGroupSummary v-else-if="activeMenu === 'summary'" />
         </el-main>
@@ -54,15 +59,16 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { List, Tools, Calendar, Document, DataBoard } from '@element-plus/icons-vue'
+import { List, Tools, Calendar, Document, DataBoard, EditPen } from '@element-plus/icons-vue'
 import EquipmentList from './components/EquipmentList.vue'
 import InspectionLedger from './components/InspectionLedger.vue'
 import SessionList from './components/SessionList.vue'
+import FeedbackRegister from './components/FeedbackRegister.vue'
 import ChangeLogList from './components/ChangeLogList.vue'
 import AgeGroupSummary from './components/AgeGroupSummary.vue'
 import NotificationCenter from './components/NotificationCenter.vue'
 
-const icons = { List, Tools, Calendar, Document, DataBoard }
+const icons = { List, Tools, Calendar, Document, DataBoard, EditPen }
 const activeMenu = ref('equipment')
 
 const handleMenuSelect = (index) => {
@@ -74,6 +80,7 @@ const pageTitle = computed(() => {
     equipment: '低温配套器材管理',
     inspection: '耐寒送检台账',
     session: '体验场次管理',
+    feedback: '体验感受登记',
     changeLog: '年龄段变更台账',
     summary: '年龄段分组汇总'
   }

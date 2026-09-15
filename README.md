@@ -49,3 +49,19 @@ Docker Compose 端口均绑定到 `127.0.0.1`，镜像基础地址通过 `.env` 
 | GET | `/api/inspection?equipmentId=&status=` | 台账查询，两个筛选参数均可为空 |
 | POST | `/api/inspection` | 新增送检单（参数：equipmentId、inspectionNote、operator 选填） |
 | PUT | `/api/inspection/{id}/repair` | 标记已修复 |
+
+## 体验感受登记
+
+低温体验散场时，把游客随口反馈的冷不冷、手脚麻不麻当场记下来，隔天对班组交代不再靠记忆。
+
+- 选场次、写游客称呼、选室温感觉（很冷/有点冷/适中/不冷）与手脚发麻（无/轻微/明显）、填登记人；
+- 同一天、同一场次、同一位游客只能记一条：前端命中已登记记录时提示并置灰提交按钮，后端校验 + 数据库唯一约束双重兜底；
+- 名单支持按登记日期、按场次筛选，可单独或组合使用，并汇总发麻条数，方便隔天交代；
+- 记录落库保存，关掉页面再打开，已登记的名单还在。
+
+接口（`/api/feedback`）：
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/api/feedback?sessionId=&date=` | 名单查询，两个筛选参数均可为空 |
+| POST | `/api/feedback` | 新增登记（参数：sessionId、visitorName、tempFeeling、numbness、registrar，feedbackDate 选填默认当天） |

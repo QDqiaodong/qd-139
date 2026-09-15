@@ -98,6 +98,23 @@ CREATE TABLE IF NOT EXISTS inspection_order (
     INDEX idx_inspection_equipment (equipment_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 体验感受登记：散场时记下游客冷不冷、手脚麻不麻；同一场同一游客当天只记一条
+CREATE TABLE IF NOT EXISTS experience_feedback (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    session_id BIGINT NOT NULL,
+    session_no VARCHAR(50) NOT NULL,
+    session_name VARCHAR(100) NOT NULL,
+    visitor_name VARCHAR(50) NOT NULL,
+    temp_feeling VARCHAR(20) NOT NULL,
+    numbness VARCHAR(20) NOT NULL,
+    registrar VARCHAR(50) NOT NULL,
+    feedback_date DATE NOT NULL,
+    created_at DATETIME NOT NULL,
+    UNIQUE KEY uk_feedback_session_visitor_date (session_id, visitor_name, feedback_date),
+    INDEX idx_feedback_date (feedback_date),
+    INDEX idx_feedback_session (session_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 INSERT INTO equipment (equipment_no, name, cold_resistance_spec, age_group, status, created_at) VALUES
 ('EQ-001', '儿童防寒座椅', '-40°C至-10°C', 'CHILD', 1, NOW()),
 ('EQ-002', '成人防寒座椅', '-60°C至-20°C', 'ADULT', 1, NOW()),
