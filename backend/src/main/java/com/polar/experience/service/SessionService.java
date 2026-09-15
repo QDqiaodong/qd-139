@@ -13,6 +13,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -45,6 +47,8 @@ public class SessionService {
         session.setStatus(dto.getStatus() != null ? dto.getStatus() : 1);
 
         validateRatios(session.getChildRatio(), session.getAdultRatio(), session.getElderlyRatio());
+        // 保存前先排查与其他正常场次的时段重叠，撞上则整体拦截、不允许创建
+        validateTimeOverlap(null, session.getStartTime(), session.getEndTime(), session.getStatus());
 
         Session saved = sessionRepository.save(session);
 
@@ -82,6 +86,8 @@ public class SessionService {
         if (dto.getStatus() != null) session.setStatus(dto.getStatus());
 
         validateRatios(session.getChildRatio(), session.getAdultRatio(), session.getElderlyRatio());
+        // 改时间/改状态同样要排查与其他正常场次的时段重叠，撞上则整体拦截、本次更新不生效
+        validateTimeOverlap(id, session.getStartTime(), session.getEndTime(), session.getStatus());
 
         Session saved = sessionRepository.save(session);
 
@@ -158,6 +164,40 @@ public class SessionService {
         if (sum != 100) {
             throw new RuntimeException("儿童、成人、老年人群配比之和必须等于100%（当前为" + sum + "%），不能保存");
         }
+    }
+
+    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    /**
+     * 校验场次时段不与其他正常（未停用）场次重叠：开始/结束时间只要叠在一起就拦截保存。
+     * 首尾相接（一场结束时间恰好等于另一场开始时间）不算重叠；编辑时排除自身。
+     */
+    private void validateTimeOverlap(Long selfId, LocalDateTime startTime, LocalDateTime endTime, Integer status) {
+        if (startTime == null || endTime == null) {
+            return;
+        }
+        // 停用中的场次不再占用时段，且停用操作本身不应被旧冲突数据拦住
+        if (Integer.valueOf(0).equals(status)) {
+            return;
+        }
+        for (Session other : sessionRepository.findByStatus(1)) {
+            if (other.getId().equals(selfId)) {
+                continue;
+            }
+            // 半开区间 [start, end) 相交判定：本场开始早于对方结束，且本场结束晚于对方开始
+            if (startTime.isBefore(other.getEndTime()) && endTime.isAfter(other.getStartTime())) {
+                LocalDateTime overlapStart = startTime.isAfter(other.getStartTime()) ? startTime : other.getStartTime();
+                LocalDateTime overlapEnd = endTime.isBefore(other.getEndTime()) ? endTime : other.getEndTime();
+                throw new RuntimeException("保存失败：本场次时段与已有的「" + other.getName() + "」（场次编号："
+                        + other.getSessionNo() + "，" + formatTime(other.getStartTime()) + " 至 "
+                        + formatTime(other.getEndTime()) + "）重叠，冲突时段为 " + formatTime(overlapStart)
+                        + " 至 " + formatTime(overlapEnd) + "，请调整时间后再保存");
+            }
+        }
+    }
+
+    private String formatTime(LocalDateTime time) {
+        return time == null ? "" : TIME_FORMATTER.format(time);
     }
 
     /**

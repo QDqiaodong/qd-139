@@ -1,7 +1,7 @@
 <template>
   <div class="session-list">
     <div class="filter-bar">
-      <el-button type="primary" @click="showAddForm = true">
+      <el-button type="primary" @click="openAddForm">
         <el-icon><component :is="icons.Plus" /></el-icon>
         新增场次
       </el-button>
@@ -194,6 +194,69 @@ const editSession = (row) => {
   showAddForm.value = true
 }
 
+const resetFormData = () => ({
+  id: null,
+  sessionNo: '',
+  name: '',
+  startTime: '',
+  endTime: '',
+  childRatio: 0,
+  adultRatio: 100,
+  elderlyRatio: 0,
+  status: 1
+})
+
+const openAddForm = () => {
+  isEdit.value = false
+  formData.value = resetFormData()
+  showAddForm.value = true
+  formRef.value?.clearValidate?.()
+}
+
+const toMillis = (value) => {
+  if (!value) return null
+  const time = value instanceof Date ? value : new Date(value)
+  return Number.isNaN(time.getTime()) ? null : time.getTime()
+}
+
+const formatDateTime = (value) => {
+  const time = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(time.getTime())) return String(value)
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${time.getFullYear()}-${pad(time.getMonth() + 1)}-${pad(time.getDate())} `
+    + `${pad(time.getHours())}:${pad(time.getMinutes())}:${pad(time.getSeconds())}`
+}
+
+// 两个场次的时段是否重叠：半开区间 [开始, 结束)，首尾相接不算重叠
+const isTimeOverlap = (startA, endA, startB, endB) =>
+  startA < endB && endA > startB
+
+// 保存前预检：与列表中其他正常场次的开始/结束时间只要叠在一起，就拦下本次保存并写明冲突对象与时段
+const findOverlappingSession = () => {
+  const start = toMillis(formData.value.startTime)
+  const end = toMillis(formData.value.endTime)
+  if (start === null || end === null) return null
+  return sessionList.value.find((row) => {
+    if (isEdit.value && row.id === formData.value.id) return false
+    if (row.status !== 1) return false
+    const otherStart = toMillis(row.startTime)
+    const otherEnd = toMillis(row.endTime)
+    return otherStart !== null && otherEnd !== null && isTimeOverlap(start, end, otherStart, otherEnd)
+  }) || null
+}
+
+const buildOverlapMessage = (row) => {
+  const start = toMillis(formData.value.startTime)
+  const end = toMillis(formData.value.endTime)
+  const otherStart = toMillis(row.startTime)
+  const otherEnd = toMillis(row.endTime)
+  const overlapStart = Math.max(start, otherStart)
+  const overlapEnd = Math.min(end, otherEnd)
+  return `保存失败：本场次时段与已有的「${row.name}」（场次编号：${row.sessionNo}，`
+    + `${formatDateTime(row.startTime)} 至 ${formatDateTime(row.endTime)}）重叠，`
+    + `冲突时段为 ${formatDateTime(overlapStart)} 至 ${formatDateTime(overlapEnd)}，请调整时间后再保存`
+}
+
 const bindEquipment = async (row) => {
   currentSessionId.value = row.id
   currentSession.value = row
@@ -225,6 +288,11 @@ const submitForm = async () => {
     if (!valid) return
     if (ratioSum.value !== 100) {
       ElMessage.error(`儿童、成人、老年人群配比之和必须等于100%（当前为${ratioSum.value}%），不能保存`)
+      return
+    }
+    const overlapping = findOverlappingSession()
+    if (overlapping) {
+      ElMessage.error(buildOverlapMessage(overlapping))
       return
     }
     const res = isEdit.value
